@@ -1,22 +1,37 @@
 <?php
-    require 'ABTester.php';
-    $ab = new ABTester();
-    $ab->addTest('Pepe', array(
-        'Olga' => array(array(0,49)),
-        'Susana' => array(array(50,99)),
-    ), 0);
-    $ab->open();
-?>
-<html>
-    <head>
-        <title>Test</title>
-    </head>
-    <body>
-    <?php $ab->outputIf('Pepe', 'Olga', function() { ?>
-        olga
-    <?php }); ?>
-    </body>
-</html>
-<?php
-    $ab->close();
-?>
+require 'ABTronic.php';
+
+ABTronic::run(array(
+    'HomePageMap' => array(
+        'affects' => 10,
+        'options' => array(
+            'A' => 25,
+            'B' => 25,
+        ),
+    ),
+    'PostingButton' => array(
+        'affects' => 50,
+        'options' => array(
+            'A' => 40,
+            'B' => 40,
+        ),
+    ),
+), function($abt) {
+    ?>
+    <html>
+        <body>
+
+            <?php $abt->variate('PostingButton', array('A', $abt::CONTROL), function() use($abt) { ?>
+                estoy en A o control
+            <?php }, function() use($abt) { ?>
+                estoy en B
+            <?php }); ?>
+
+            <?php foreach ($abt->experiments() as $name) { ?>
+                El experimento <?= $name ?> tiene el valor <?= $abt->variation($name) ?>.
+            <?php } ?>
+
+        </body>
+    </html>
+    <?php
+});
