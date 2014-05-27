@@ -3,17 +3,17 @@ require 'ABTronic.php';
 
 ABTronic::run(array(
     'HomePageMap' => array(
-        'affects' => 10,
+        'affects' => 1/10,
         'options' => array(
-            'A' => 25,
-            'B' => 25,
+            'A' => 1/4,
+            'B' => 1/4,
         ),
     ),
     'PostingButton' => array(
-        'affects' => 50,
+        'affects' => 5/10,
         'options' => array(
-            'A' => 40,
-            'B' => 40,
+            'A' => 4/10,
+            'B' => 4/10,
         ),
     ),
 ), function($abt) {

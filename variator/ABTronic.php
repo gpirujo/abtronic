@@ -22,11 +22,11 @@ class ABTronic {
             ?><esi:assign name="x" value="$(die)"/><?php
             ?><esi:choose><?php
 
-                $max = pow(2, self::RESOLUTION) * $definition['affects']/100;
+                $max = pow(2, self::RESOLUTION) * $definition['affects'];
                 $cummulative = 0;
                 foreach ($definition['options'] as $opt_name => $opt_val) {
                     $cummulative += $opt_val;
-                    ?><esi:when test="$(x)<=<?= floor($max * $cummulative/100) ?>"><?php
+                    ?><esi:when test="$(x)<=<?= round($max * $cummulative) ?>"><?php
                         ?><esi:assign name="y" value="'<?= htmlspecialchars($opt_name) ?>'"/><?php
                     ?></esi:when><?php
                 }
