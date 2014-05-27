@@ -1,0 +1,2 @@
+- trackear con google analytics
+- permitir multivarianza
