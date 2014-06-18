@@ -8,19 +8,6 @@ abstract class Future {
     abstract public function choose($whens, $otherwise);
     abstract public function when($expression, $action);
 
-    public function block() {
-        foreach (func_get_args() as $function) {
-            call_user_func($function);
-        }
-    }
-
-    public function _elseif($test, $then, $else = null) {
-        $that = $this;
-        return function() use ($that, $test, $then, $else) {
-            $that->_if($test, $then, $else);
-        };
-    }
-
     // EXPRESSIONS
 
     abstract public function literal($value);
