@@ -83,4 +83,7 @@ abstract class Future {
         return $this->_buildMultipleOp('||', func_get_args());
     }
 
+    abstract public function int($e);
+    abstract public function rand($e);
+
 }

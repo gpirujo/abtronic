@@ -4,5 +4,7 @@ Plataforma de A/B testing con PHP, ESI y Google Analytics
 
 ## To Do
 
-* Hacer backend para alternar entre ESI y PHP para simulación
-* Traer informe a github en markdown para traquear cambios
+* Revisar Future
+  * Chequear que las funciones int y rand funcionen todas igual
+  * Agregar paréntesis en las respuestas de las ops para no romper las precedencias 
+  * Implementar foreach

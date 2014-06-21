@@ -2,11 +2,7 @@
 
 class Future_PHP extends Future {
 
-    public $variables = array(); // TODO make this protected
-
-    public function _eval($e) {
-        return eval('return ' . call_user_func($e) . ';');
-    }
+    public $variables = array();
 
     // STATEMENTS
 
@@ -22,9 +18,8 @@ class Future_PHP extends Future {
     }
 
     public function when($expression, $action) {
-        $that = $this;
-        return function() use($expression, $action, $that) {
-            if ($result = $that->_eval($expression)) {
+        return function() use($expression, $action) {
+            if ($result = call_user_func($expression)) {
                 call_user_func($action);
             }
             return $result;
@@ -34,9 +29,9 @@ class Future_PHP extends Future {
     public function assign($name, $expression) {
         $that = $this;
         return function() use($that, $name, $expression) {
-            $value = $that->_eval($expression);
+            $value = call_user_func($expression);
             if (preg_match('/(\w+)\{(\w+)\}/', $name, $matches)) {
-                list($_, $name, $sub) = $matches;
+                list($name, $sub) = array_slice($matches, 1, 2);
                 $that->variables[$name][$sub] = $value;
             } else {
                 $that->variables[$name] = $value;
@@ -48,17 +43,124 @@ class Future_PHP extends Future {
 
     public function literal($value) {
         return function() use($value) {
-            return var_export($value, true);
+            return $value;
         };
     }
 
     public function variable($name, $sub = null) {
-        return function() use($name, $sub) {
-            $result = '$this->variables[' . var_export($name, true) . ']';
+        $that = $this;
+        return function() use($that, $name, $sub) {
+            $result = $that->variables[$name];
             if (!is_null($sub)) {
-                $result .= '[' . call_user_func($sub) . ']';
+                $result = $result[$sub];
             }
             return $result;
+        };
+    }
+
+    protected function _buildBinaryOp($op, $a, $b) {
+        return function() use($op, $a, $b) {
+            return call_user_func($op, call_user_func($a), call_user_func($b));
+        };
+    }
+
+    public function eq($a, $b) {
+        return $this->_buildBinaryOp(function($a, $b) {
+            return $a == $b;
+        }, $a, $b);
+    }
+
+    public function ne($a, $b) {
+        return $this->_buildBinaryOp(function($a, $b) {
+            return $a != $b;
+        }, $a, $b);
+    }
+
+    public function gt($a, $b) {
+        return $this->_buildBinaryOp(function($a, $b) {
+            return $a > $b;
+        }, $a, $b);
+    }
+
+    public function gte($a, $b) {
+        return $this->_buildBinaryOp(function($a, $b) {
+            return $a >= $b;
+        }, $a, $b);
+    }
+
+    public function lt($a, $b) {
+        return $this->_buildBinaryOp(function($a, $b) {
+            return $a < $b;
+        }, $a, $b);
+    }
+
+    public function lte($a, $b) {
+        return $this->_buildBinaryOp(function($a, $b) {
+            return $a <= $b;
+        }, $a, $b);
+    }
+
+    protected function _buildMultipleOp($op, $args) {
+        return function() use($op, $args) {
+            $result = call_user_func(array_shift($args));
+            while ($arg = array_shift($args)) {
+                $result = call_user_func($op, $result, call_user_func($arg));
+            }
+            return $result;
+        };
+    }
+
+    public function mul() {
+        return $this->_buildMultipleOp(function($r, $x) {
+            return $r * $x;
+        }, func_get_args());
+    }
+
+    public function div() {
+        return $this->_buildMultipleOp(function($r, $x) {
+            return $r / $x;
+        }, func_get_args());
+    }
+
+    public function mod() {
+        return $this->_buildMultipleOp(function($r, $x) {
+            return $r % $x;
+        }, func_get_args());
+    }
+
+    public function add() {
+        return $this->_buildMultipleOp(function($r, $x) {
+            return $r + $x;
+        }, func_get_args());
+    }
+
+    public function sub() {
+        return $this->_buildMultipleOp(function($r, $x) {
+            return $r - $x;
+        }, func_get_args());
+    }
+
+    public function _and() {
+        return $this->_buildMultipleOp(function($r, $x) {
+            return $r && $x;
+        }, func_get_args());
+    }
+
+    public function _or() {
+        return $this->_buildMultipleOp(function($r, $x) {
+            return $r || $x;
+        }, func_get_args());
+    }
+
+    public function int($e) {
+        return function() use($e) {
+            return (int) call_user_func($e);
+        };
+    }
+
+    public function rand($e) {
+        return function() use($e) {
+            return rand(0, call_user_func($e) - 1);
         };
     }
 

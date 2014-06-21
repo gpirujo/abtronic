@@ -14,7 +14,6 @@ class Future_ESI extends Future {
         } else {
             echo '/>';
         }
-        echo "\n";
     }
 
     // STATEMENTS
@@ -23,7 +22,9 @@ class Future_ESI extends Future {
         $that = $this;
         return function() use($that, $whens, $otherwise) {
             $that->_tag('choose', function() use($that, $whens, $otherwise) {
-                foreach ($whens as $when) call_user_func($when);
+                foreach ($whens as $when) {
+                    call_user_func($when);
+                }
                 if ($otherwise) {
                     $that->_tag('otherwise', $otherwise);
                 }
@@ -45,19 +46,6 @@ class Future_ESI extends Future {
         return function() use($that, $name, $expression) {
             $that->_tag('assign', $expression, array('name' => $name));
         };
-    }
-
-    public function _if($test, $then, $else = null) {
-        static $seq = 0;
-        $that = $this;
-        $var = 'esivar' . ++$seq;
-        $this->assign($var, $test);
-        $this->_tag('choose', function() use ($that, $var, $test, $then, $else) {
-            $that->_tag('when', $then, array('test' => call_user_func($that->variable($var))));
-            if ($else) {
-                $that->_tag('otherwise', $else);
-            }
-        });
     }
 
     // EXPRESSIONS
