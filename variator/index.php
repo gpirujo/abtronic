@@ -4,18 +4,16 @@ require 'ABTronic.php';
 $experiments = array(
     'HomePageMap' => array(
         'dimension' => 1,
-        'affects' => 9/10,
         'options' => array(
-            'A' => 1/4,
-            'B' => 1/4,
+            'A, tu hermana' => 20,
+            'B, tu vieja' => 20,
         ),
     ),
     'PostingButton' => array(
         'dimension' => 2,
-        'affects' => 9/10,
         'options' => array(
-            'A' => 4/10,
-            'B' => 4/10,
+            'A' => 40,
+            'B' => 40,
         ),
     ),
 );
@@ -45,7 +43,8 @@ ABTronic::run($experiments, function($ab) {
                 <?php }); ?>
             <?php } ?>
 
-            <script><?php $ab->track(); ?></script>
+            <?php $ab->track(); ?>
+
         </body>
     </html>
     <?php
