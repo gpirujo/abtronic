@@ -45,6 +45,7 @@ ABTronic::run($experiments, function($ab) {
                 <?php }); ?>
             <?php } ?>
 
+            <script><?php $ab->track(); ?></script>
         </body>
     </html>
     <?php

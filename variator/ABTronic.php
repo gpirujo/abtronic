@@ -4,7 +4,7 @@ class ABTronic {
 
     const DIMENSIONS = 20;
     const COOKIE = 'die';
-    const CONTROL = '__CONTROL__';
+    const CONTROL = 'CONTROL';
 
     public static function run($experiments, $body) {
         ?><esi:text><?php
@@ -57,12 +57,12 @@ class ABTronic {
                 foreach ($definition['options'] as $opt_name => $opt_val) {
                     $cummulative += $opt_val;
                     ?><esi:when test="$(x)<=<?= round($max * $cummulative) ?>"><?php
-                        ?><esi:assign name="y" value="'<?= htmlspecialchars($opt_name) ?>'"/><?php
+                        ?><esi:assign name="y" value="'<?= htmlspecialchars(json_encode($opt_name)) ?>'"/><?php
                     ?></esi:when><?php
                 }
 
                 ?><esi:otherwise><?php
-                    ?><esi:assign name="y" value="'<?= self::CONTROL ?>'"/><?php
+                    ?><esi:assign name="y" value="'<?= json_encode(self::CONTROL) ?>'"/><?php
                 ?></esi:otherwise><?php
             ?></esi:choose><?php
             ?><esi:assign name="experiments{'<?= htmlspecialchars($experiment) ?>'}" value="$(y)"/><?php
@@ -78,7 +78,7 @@ class ABTronic {
 
         $clauses = array();
         foreach ($options as $option) {
-            $clauses[] = sprintf('$(experiments{\'%s\'})==\'%s\'', htmlspecialchars($experiment), htmlspecialchars($option));
+            $clauses[] = sprintf('$(experiments{\'%s\'})==\'%s\'', htmlspecialchars($experiment), htmlspecialchars(json_encode($option)));
         }
 
         ?></esi:text><esi:choose><?php
@@ -109,6 +109,20 @@ class ABTronic {
         ?></esi:choose><esi:text><?php
         if (isset($exception)) throw $exception;
 
+    }
+
+    public function track() {
+        if ($this->dieThrown && count($this->preparedExperiments)) {
+            $dimensions = array();
+            foreach ($this->preparedExperiments as $experiment) {
+                $dimensions[] = sprintf(
+                    '%s:</esi:text><esi:vars>$html_decode($(experiments{\'%s\'}))</esi:vars><esi:text>',
+                    json_encode('dimension' . $this->experiments[$experiment]['dimension']),
+                    htmlspecialchars($experiment)
+                );
+            }
+            ?>ga('set',{<?= join(',', $dimensions) ?>})<?php
+        }
     }
 
 }
