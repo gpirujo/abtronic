@@ -2,16 +2,26 @@
 
 abstract class Future {
 
+    public function block($actions) {
+        return function() use($actions) {
+            foreach ($actions as $action) {
+                call_user_func($action);
+            }
+        };
+    }
+
     // STATEMENTS
 
     abstract public function assign($name, $expression);
     abstract public function choose($whens, $otherwise);
     abstract public function when($expression, $action);
+    abstract public function setcookie($name, $e);
 
     // EXPRESSIONS
 
     abstract public function literal($value);
-    abstract public function variable($name, $sub = null);
+    abstract public function variable($name);
+    abstract public function name($name, $e = null);
 
     public function _not($e) {
         return function() use($e) {
@@ -85,5 +95,6 @@ abstract class Future {
 
     abstract public function int($e);
     abstract public function rand($e);
+    abstract public function regex($e, $r);
 
 }

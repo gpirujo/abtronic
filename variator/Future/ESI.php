@@ -44,7 +44,14 @@ class Future_ESI extends Future {
     public function assign($name, $expression) {
         $that = $this;
         return function() use($that, $name, $expression) {
+            if (is_callable($name)) $name = call_user_func($name);
             $that->_tag('assign', $expression, array('name' => $name));
+        };
+    }
+
+    public function setcookie($name, $e) {
+        return function() use($name, $e) {
+            echo '$add_header(\'Set-Cookie\',\'' . $name . '=\'+$url_encode(' . call_user_func($e) . '))';
         };
     }
 
@@ -52,13 +59,28 @@ class Future_ESI extends Future {
 
     public function literal($value) {
         return function() use($value) {
-            return json_encode($value);
+            if (is_string($value)) {
+                return "'" . str_replace("'", "\\'", $value) . "'";
+            } else {
+                return json_encode($value);
+            }
         };
     }
 
-    public function variable($name, $sub = null) {
-        return function() use($name, $sub) {
-            return '$(' . $name . (is_null($sub) ? '' : '{' . call_user_func($sub) . '}') . ')';
+    public function variable($name) {
+        return function() use($name) {
+            if (is_callable($name)) $name = call_user_func($name);
+            return '$(' . $name . ')';
+        };
+    }
+
+    public function name($name, $e = null) {
+        return function() use($name, $e) {
+            $result = $name;
+            if ($e) {
+                $result .= '{' . call_user_func($e) . '}';
+            }
+            return $result;
         };
     }
 
@@ -71,6 +93,12 @@ class Future_ESI extends Future {
     public function rand($e) {
         return function() use($e) {
             return '$rand(' . call_user_func($e) . ')';
+        };
+    }
+
+    public function regex($e, $r) {
+        return function() use($e, $r) {
+            return call_user_func($e) . " matches '''" . $r . "'''";
         };
     }
 
