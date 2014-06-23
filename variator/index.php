@@ -1,34 +1,41 @@
 <?php
 require 'ABTronic.php';
 
-ABTronic::run(array(
+$experiments = array(
     'HomePageMap' => array(
-        'affects' => 1/10,
+        'affects' => 7/8,
         'options' => array(
             'A' => 1/4,
             'B' => 1/4,
         ),
     ),
     'PostingButton' => array(
-        'affects' => 5/10,
+        'affects' => 4/5,
         'options' => array(
             'A' => 4/10,
             'B' => 4/10,
         ),
     ),
-), function($abt) {
+);
+
+ABTronic::run($experiments, function($ab) {
+    global $experiments;
     ?>
     <html>
         <body>
 
-            <?php $abt->variate('PostingButton', array('A', $abt::CONTROL), function() use($abt) { ?>
+            <?php $ab->variate('PostingButton', array('A', $ab::CONTROL), function() use($ab) { ?>
                 estoy en A o control
-            <?php }, function() use($abt) { ?>
+            <?php }, function() use($ab) { ?>
                 estoy en B
             <?php }); ?>
 
-            <?php foreach ($abt->experiments() as $name) { ?>
-                El experimento <?= $name ?> tiene el valor <?= $abt->variation($name) ?>.
+            <?php foreach ($experiments as $exp_name => $def) { ?>
+                El experimento <?= $exp_name ?> tiene el valor
+                <?php foreach (array_keys($def['options']) as $opt_name) $ab->variate($exp_name, $opt_name, function() use($opt_name) { ?>
+                    <?= $opt_name ?>
+                <?php }); ?>
+                <?php $ab->variate($exp_name, $ab::CONTROL, function() use($ab) { echo $ab::CONTROL; }); ?>
             <?php } ?>
 
         </body>

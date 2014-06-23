@@ -6,19 +6,44 @@ class ABTronic {
     const COOKIE = 'die';
     const CONTROL = '__CONTROL__';
 
-    static function run($experiments, $body) {
+    public static function run($experiments, $body) {
+        ?><esi:text><?php
+        try {
+            call_user_func($body, new static($experiments));
+        } catch (Exception $e) {
+            $exception = $e;
+        }
+        ?></esi:text><?php
+        if (isset($exception)) throw $exception;
+    }
 
-        ?><esi:choose><?php
-            ?><esi:when test="$(HTTP_COOKIE{'<?= self::COOKIE ?>'}) matches '''^([0-9]{1,10})$'''"><?php
-                ?><esi:assign name="die" value="$int($(MATCHES{1}))"/><?php
-            ?></esi:when><?php
-            ?><esi:otherwise><?php
-                ?><esi:assign name="die" value="$rand(<?= pow(2, self::RESOLUTION) ?>)"/><?php
-                ?>$add_header('Set-Cookie', '<?= self::COOKIE ?>=' + $(die))<?php
-            ?></esi:otherwise><?php
-        ?></esi:choose><?php
+    private $experiments;
+    private $dieThrown = false;
+    private $preparedExperiments = array();
 
-        foreach ($experiments as $experiment => $definition) {
+    public function __construct($experiments) {
+        $this->experiments = $experiments;
+    }
+
+    public function variate($experiment, $options, $then, $else = null) {
+
+        if (!in_array($experiment, $this->preparedExperiments)) {
+            if (!$this->dieThrown) {
+                ?></esi:text><?php
+                ?><esi:choose><?php
+                    ?><esi:when test="$(HTTP_COOKIE{'<?= self::COOKIE ?>'}) matches '''^([0-9]{1,10})$'''"><?php
+                        ?><esi:assign name="die" value="$int($(MATCHES{1}))"/><?php
+                    ?></esi:when><?php
+                    ?><esi:otherwise><?php
+                        ?><esi:assign name="die" value="$rand(<?= pow(2, self::RESOLUTION) ?>)"/><?php
+                        ?>$add_header('Set-Cookie', '<?= self::COOKIE ?>=' + $url_encode($(die)))<?php
+                    ?></esi:otherwise><?php
+                ?></esi:choose><?php
+                ?><esi:text><?php
+                $this->dieThrown = true;
+            }
+            $definition = $this->experiments[$experiment];
+            ?></esi:text><?php
             ?><esi:assign name="x" value="$(die)"/><?php
             ?><esi:choose><?php
 
@@ -37,36 +62,9 @@ class ABTronic {
             ?></esi:choose><?php
             ?><esi:assign name="experiments{'<?= htmlspecialchars($experiment) ?>'}" value="$(y)"/><?php
             ?><esi:assign name="active{'<?= htmlspecialchars($experiment) ?>'}" value="$(x)<=<?= floor($max) ?>"/><?php
+            ?><esi:text><?php
+            $this->preparedExperiments[] = $experiment;
         }
-
-        ?><esi:text><?php
-        try {
-            call_user_func($body, new static($experiments));
-        } catch (Exception $e) {
-            $exception = $e;
-        }
-        ?></esi:text><?php
-        if (isset($exception)) throw $exception;
-
-    }
-
-    private $experiments;
-
-    function __construct($experiments) {
-        $this->experiments = $experiments;
-    }
-
-    function experiments() {
-        return array_keys($this->experiments);
-    }
-
-    function variation($experiment) {
-        ?></esi:text><esi:vars><?php
-            ?>$(experiments{'<?= htmlspecialchars($experiment) ?>'})<?php
-        ?></esi:vars><esi:text><?php
-    }
-
-    function variate($experiment, $options, $then, $else = null) {
 
         if (!is_array($options)) {
             $options = array($options);
