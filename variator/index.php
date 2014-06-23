@@ -3,6 +3,7 @@ require 'ABTronic.php';
 
 $experiments = array(
     'HomePageMap' => array(
+        'dimension' => 1,
         'affects' => 9/10,
         'options' => array(
             'A' => 1/4,
@@ -10,6 +11,7 @@ $experiments = array(
         ),
     ),
     'PostingButton' => array(
+        'dimension' => 2,
         'affects' => 9/10,
         'options' => array(
             'A' => 4/10,

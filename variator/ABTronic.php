@@ -2,7 +2,7 @@
 
 class ABTronic {
 
-    const RESOLUTION = 30;
+    const DIMENSIONS = 20;
     const COOKIE = 'die';
     const CONTROL = '__CONTROL__';
 
@@ -28,26 +28,31 @@ class ABTronic {
     public function variate($experiment, $options, $then, $else = null) {
 
         if (!in_array($experiment, $this->preparedExperiments)) {
+
             if (!$this->dieThrown) {
                 ?></esi:text><?php
                 ?><esi:choose><?php
-                    ?><esi:when test="$(HTTP_COOKIE{'<?= self::COOKIE ?>'}) matches '''^([0-9]{1,10})$'''"><?php
-                        ?><esi:assign name="die" value="$int($(MATCHES{1}))"/><?php
+                    ?><esi:when test="$(HTTP_COOKIE{'<?= self::COOKIE ?>'}) matches '''^[0-9]{<?= static::DIMENSIONS * 2 ?>}$'''"><?php
+                        ?><esi:assign name="die" value="$(MATCHES{0})"/><?php
                     ?></esi:when><?php
                     ?><esi:otherwise><?php
-                        ?><esi:assign name="die" value="$rand(<?= pow(2, self::RESOLUTION) ?>)"/><?php
-                        ?>$add_header('Set-Cookie', '<?= self::COOKIE ?>=' + $url_encode($(die)))<?php
+                        ?><esi:assign name="die" value="''"/><?php
+                        ?><esi:foreach collection="[1..<?= static::DIMENSIONS * 2 ?>]"><?php
+                            ?><esi:assign name="die" value="$(die) + $str($rand(10))"/><?php
+                        ?></esi:foreach><?php
+                        ?>$add_header('Set-Cookie', '<?= self::COOKIE ?>=' + $(die))<?php
                     ?></esi:otherwise><?php
                 ?></esi:choose><?php
                 ?><esi:text><?php
                 $this->dieThrown = true;
             }
+
             $definition = $this->experiments[$experiment];
             ?></esi:text><?php
-            ?><esi:assign name="x" value="$(die)"/><?php
+            ?><esi:assign name="x" value="($int($substr($(die), <?= ($definition['dimension'] - 1) * 2 ?>, 2)) + <?= crc32($experiment) % 100 ?>) % 100"/><?php
             ?><esi:choose><?php
 
-                $max = pow(2, self::RESOLUTION) * $definition['affects'];
+                $max = 100 * $definition['affects'];
                 $cummulative = 0;
                 foreach ($definition['options'] as $opt_name => $opt_val) {
                     $cummulative += $opt_val;
@@ -64,6 +69,7 @@ class ABTronic {
             ?><esi:assign name="active{'<?= htmlspecialchars($experiment) ?>'}" value="$(x)<=<?= floor($max) ?>"/><?php
             ?><esi:text><?php
             $this->preparedExperiments[] = $experiment;
+
         }
 
         if (!is_array($options)) {
