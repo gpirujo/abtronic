@@ -6,22 +6,13 @@ class ABTronic {
     const COOKIE = 'die';
     const CONTROL = 'CONTROL';
 
-    public static function run($experiments, $body) {
-        ?><esi:text><?php
-        try {
-            call_user_func($body, new static($experiments));
-        } catch (Exception $e) {
-            $exception = $e;
-        }
-        ?></esi:text><?php
-        if (isset($exception)) throw $exception;
-    }
-
+    private $esi;
     private $experiments;
     private $dieThrown = false;
     private $activeExperiments = array();
 
-    public function __construct($experiments) {
+    public function __construct($esi, $experiments) {
+        $this->esi = $esi;
         $this->experiments = $experiments;
     }
 
@@ -29,45 +20,53 @@ class ABTronic {
 
         if (!in_array($experiment, $this->activeExperiments)) {
 
-            $crc = crc32($experiment);
-            ksort($this->experiments[$experiment]);
-
-            ?></esi:text><?php
+            $COOKIE = static::COOKIE;
+            $DICE = static::DICE;
 
             if (!$this->dieThrown) {
-                ?><esi:choose><?php
-                    ?><esi:when test="$(HTTP_COOKIE{'<?= self::COOKIE ?>'}) matches '''^[0-9]{<?= static::DICE * 2 ?>}$'''"><?php
-                        ?><esi:assign name="die" value="$(MATCHES{0})"/><?php
-                    ?></esi:when><?php
-                    ?><esi:otherwise><?php
-                        ?><esi:assign name="die" value="''"/><?php
-                        ?><esi:foreach collection="[1..<?= static::DICE * 2 ?>]"><?php
-                            ?><esi:assign name="die" value="$(die) + $str($rand(10))"/><?php
-                        ?></esi:foreach><?php
-                        ?>$add_header('Set-Cookie', '<?= self::COOKIE ?>=' + $(die))<?php
-                    ?></esi:otherwise><?php
-                ?></esi:choose><?php
+
+                $this->esi->in(function($esi) use($COOKIE, $DICE) {
+                    $esi->choose(function($esi) use($COOKIE, $DICE) {
+                        $esi->when(sprintf('$(HTTP_COOKIE{\'%s\'}) matches \'\'\'^[0-9]{%d}$\'\'\'', $COOKIE, $DICE * 2), function($esi) {
+                            $esi->assign('die', '$(MATCHES{0})');
+                        });
+                        $esi->otherwise(function($esi) use($COOKIE, $DICE) {
+                            $esi->assign('die', '\'\'');
+                            $esi->for_each(sprintf('[1..%d]', $DICE * 2), function($esi) {
+                                $esi->assign('die', '$(die) + $str($rand(10))');
+                            });
+                            $esi->set_cookie($COOKIE, '$(die)');
+                        });
+                    });
+                });
+
                 $this->dieThrown = true;
+
             }
 
-            ?><esi:assign name="x" value="($int($substr($(die), <?= ($crc % static::DICE) * 2 ?>, 2)) + <?= $crc % 100 ?>) % 100"/><?php
-            ?><esi:choose><?php
+            $this->esi->in(function($esi, $opts) use($experiment, $COOKIE, $DICE) {
 
-                foreach ($this->experiments[$experiment]['options'] as $opt_name => $opt_val) {
-                    $cummulative += $opt_val;
-                    ?><esi:when test="$(x)<=<?= $cummulative ?>"><?php
-                        ?><esi:assign name="y" value="'<?= base64_encode(json_encode($opt_name)) ?>'"/><?php
-                    ?></esi:when><?php
-                }
+                $crc = crc32($experiment);
 
-                ?><esi:otherwise><?php
-                    ?><esi:assign name="y" value="'<?= base64_encode(json_encode(self::CONTROL)) ?>'"/><?php
-                ?></esi:otherwise><?php
+                $esi->assign('x', sprintf('($int($substr($(die), %d, 2)) + %d) %% 100', ($crc % $DICE) * 2, $crc % 100));
+                $esi->choose(function($esi) use($opts, $CONTROL) {
 
-            ?></esi:choose><?php
-            ?><esi:assign name="experiments{'<?= base64_encode($experiment) ?>'}" value="$(y)"/><?php
+                    ksort($opts);
+                    foreach ($opts as $opt_name => $opt_val) {
+                        $cummulative += $opt_val;
+                        $esi->when(sprintf('$(x)<=%d', $cummulative), function($esi) use($opt_name) {
+                            $esi->assign('y', sprintf('\'%s\'', base64_encode(json_encode($opt_name))));
+                        });
+                    }
 
-            ?><esi:text><?php
+                    $esi->otherwise(function($esi) use($CONTROL) {
+                        $esi->assign('y', sprintf('\'%s\'', base64_encode(json_encode($CONTROL))));
+                    });
+
+                });
+                $esi->assign(sprintf('experiments{\'%s\'}', base64_encode($experiment)), '$(y)');
+
+            }, $this->experiments[$experiment]['options']);
 
             $this->activeExperiments[] = $experiment;
 
@@ -82,47 +81,18 @@ class ABTronic {
             $clauses[] = sprintf('$(experiments{\'%s\'})==\'%s\'', base64_encode($experiment), base64_encode(json_encode($option)));
         }
 
-        ?></esi:text><esi:choose><?php
-        try {
-            if ($then) {
-                ?><esi:when test="<?= join('||', $clauses) ?>"><esi:text><?php
-                try {
-                    call_user_func($then);
-                } catch (Exception $e) {
-                    $exception = $e;
+        $this->esi->in(function($esi) use($then, $else, $clauses) {
+            $esi->choose(function($esi) use($then, $else, $clauses) {
+                $esi->when(join('||', $clauses), $then);
+                if ($else) {
+                    $esi->otherwise($else);
                 }
-                ?></esi:text></esi:when><?php
-                if (isset($exception)) throw $exception;
-            }
-            if ($else) {
-                ?><esi:otherwise><esi:text><?php
-                try {
-                    call_user_func($else);
-                } catch (Exception $e) {
-                    $exception = $e;
-                }
-                ?></esi:text></esi:otherwise><?php
-                if (isset($exception)) throw $exception;
-            }
-        } catch (Exception $e) {
-            $exception = $e;
-        }
-        ?></esi:choose><esi:text><?php
-        if (isset($exception)) throw $exception;
+            });
+        });
 
     }
 
     public function track() {
-
-        $dimensions = array();
-        foreach ($this->activeExperiments as $experiment) {
-            $dimensions[] = sprintf(
-                '%s:</esi:text><esi:vars>$base64_decode($(experiments{\'%s\'}))</esi:vars><esi:text>',
-                json_encode('dimension' . $this->experiments[$experiment]['dimension']),
-                base64_encode($experiment)
-            );
-        }
-
         ?><script><?php
 
             ?>(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){<?php
@@ -131,10 +101,19 @@ class ABTronic {
             ?>})(window,document,'script','//www.google-analytics.com/analytics.js','ga');<?php
 
             ?>ga('create','UA-51391553-1','abtronic.gpirujo.com');<?php
-            ?>ga('send','pageview', {<?= join(',', $dimensions) ?>});<?php
+            ?>ga('send','pageview', {<?php
+
+            foreach ($this->activeExperiments as $experiment) {
+                printf('%s%s:', @$comma, json_encode('dimension' . $this->experiments[$experiment]['dimension']));
+                $this->esi->in(function($esi) use($experiment) {
+                    $esi->vars(sprintf('$base64_decode($(experiments{\'%s\'}))', base64_encode($experiment)));
+                });
+                $comma = ',';
+            }
+
+            ?>});<?php
 
         ?></script><?php
-
     }
 
 }

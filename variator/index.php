@@ -1,25 +1,28 @@
 <?php
+require 'ESI.php';
 require 'ABTronic.php';
 
-$experiments = array(
-    'HomePageMap' => array(
-        'dimension' => 1,
-        'options' => array(
-            'A, tu hermana' => 20,
-            'B, tu vieja' => 20,
-        ),
-    ),
-    'PostingButton' => array(
-        'dimension' => 2,
-        'options' => array(
-            'A' => 40,
-            'B' => 40,
-        ),
-    ),
-);
+$esi = new ESI;
+$esi->start(function($esi) {
 
-ABTronic::run($experiments, function($ab) {
-    global $experiments;
+    $experiments = array(
+        'HomePageMap' => array(
+            'dimension' => 1,
+            'options' => array(
+                'A, tu hermana' => 20,
+                'B, tu vieja' => 20,
+            ),
+        ),
+        'PostingButton' => array(
+            'dimension' => 2,
+            'options' => array(
+                'A' => 40,
+                'B' => 40,
+            ),
+        ),
+    );
+    $ab = new ABTronic($esi, $experiments);
+
     ?>
     <html>
         <head>
@@ -48,4 +51,5 @@ ABTronic::run($experiments, function($ab) {
         </body>
     </html>
     <?php
+
 });
