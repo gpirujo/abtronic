@@ -1,5 +1,7 @@
 # Desarrollo
 
+## Outline
+
 * tenemos una cdn activa que interpreta código esi
 	* ya usamos esi para otras cosas y es parte del escenario
 * ejecutar en la cdn soluciona los problemas de los dos casos
@@ -10,7 +12,7 @@
 	* offload del tracking
 * arquitectura
 * alternativas
-	* ```if (variate) statement``` > ```variate(function() {statement})```
+	* `if (variate) statement` > `variate(function() {statement})`
 	* un dado > muchos dados
 	* página entera > variaciones
 	* track de participación con user vars > con custom dimensions
@@ -19,7 +21,7 @@
 * asunciones
 	* el javascript está siempre después del html
 * pruebas
-	* esi en ```url``` y variaciones en ```url?var```
+	* esi en `url` y variaciones en `url?var`
 	* esi embebido en página con todas las variaciones
 	* track de participación con user vars
 	* track de dado
@@ -27,3 +29,7 @@
 	* librería de abtesting
 	* sitio de pruebas
 	* cliente automatizado
+
+
+Sin embargo, hay redes que tienen la capacidad de interpretar órdenes embebidas en las respuestas del servidor de aplicación, desde simples declaraciones como la inclusión de un subdocumento asociado, hasta instrucciones con complejidad de Turing, como la selección y la iteración [6].
+
