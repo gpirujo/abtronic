@@ -22,14 +22,22 @@ Existen ya productos en el mercado que implementan la técnica de A/B testing y 
 			* phpScenario: http://phpscenario.org/
 			* kumite: https://github.com/lwc/kumite
 			* php-redis A/B testing: https://github.com/aliasaria/PHP-redis-A-B-Testing
-		* Como servicios internos
+		* Como servicios
 			* SixPack: http://chairnerd.seatgeek.com/sixpack/
 	* Del lado del cliente
-		* Optimizely: https://www.optimizely.com/
+		* Como bibliotecas de funciones de Javascript
+			* ABBA: http://blog.alexmaccaw.com/abba
+		* Como servicios
+			* Optimizely: https://www.optimizely.com/
+			* Convert: http://www.convert.com/
+			* Unbounce: http://unbounce.com/
+			* Visual Website Optimizer: https://vwo.com/
 
 A continuación se detalla el análisis de estas opciones y la experiencia que se tuvo con ellas en el escenario particular de OLX.
 
 ## A/B testing en el servidor
+
+### El tiempo de respuesta
 
 La performance de una aplicación web, desde el punto de vista del usuario, se mide habitualmente con los tiempos que transcurren entre una acción de este y la respuesta de aquella. Una métrica muy usada es el tiempo de transferencia de los objetos que conforman la aplicación, que se descompone en la suma del producto del tamaño del objeto por la velocidad de transferencia, más el tiempo que transcurre desde que se emite el pedido hasta que llega la primera unidad de información, o primer _byte_.
 
@@ -39,19 +47,39 @@ Los tres componentes de esta métrica pueden ser optimizados. Los objetos son ha
 
 	tiempo_a_primer_byte = latencia(pedido) + tiempo_generacion + latencia(respuesta)
 
-Hay una fuerte razón comercial para minimizar el tiempo al primer byte: el tiempo que transcurre entre que el usuario hace "click" y que algo comienza a aparecer en la pantalla, está directamente relacionado con la tasa de abandono de un sitio web.
+Además de las motivaciones técnicas que se puedan tener para minimizar el tiempo al primer byte, hay una fuerte razón comercial para hacerlo: el tiempo que transcurre entre que el usuario hace el pedido y que algo comienza a aparecer en su pantalla está directamente relacionado con la tasa de abandono del sitio web.
 
-Una forma de disminuir el tiempo promedio de generación de la respuesta es hacer offload al caché. La condición es que los objetos no sean privados ni personalizados.
+### El tiempo de generación de la respuesta
 
-Una forma de disminuir la latencia es poner el origen cerca del cliente, pero hay clientes en todo el mundo y los orígenes son pocos o uno solo: caching distribuido globalmente.
+Una manera de disminuir el tiempo promedio de generación de la respuesta es generar una sola vez la respuesta a cada pedido, guardar una copia del resultado generado y entregar la copia en las siguientes ocurrencias del mismo pedido. Esta técnica no es nueva: es _caching_ aplicado a objetos web. Para que una respuesta sea reutilizable, es necesario que sea válida para más de un usuario: no debe ser un objeto privado de un usuario particular ni, siendo público, estar personalizado.
 
-Una optimización de esa capa de caching es que cada caché, si no tiene una copia de un objeto que le pidieron, y tiene a otro caché cerca, se lo puede pedir antes que al origen. Los cachés en red forman una CDN.
+	[servidor de aplicación] <-> [caché] <-> [1] <-> [2] <--> [3] <-> [cliente]
+	                                                      |
+	                                                      +-> [3] <-> [cliente]
 
-	Una manera de reducir el tiempo hasta el primer byte es, entonces, disminuir la distancia de red entre el servidor y el cliente. El _origen de datos_, el host que genera los objetos de una aplicación web, suele sin embargo estar ubicado en un solo punto geográfico de la Internet. No es infrecuente tener más de un origen, pero tiene un costo transaccional alto y sólo se hace por cuestiones legales o de disponibilidad: nunca de performance. Lo que se ubica cerca del cliente es un _servidor subrogante_, que no genera los objetos de la aplicación sino que se los pide al origen, pero que los guarda para futuros pedidos (esto se llama _caching_). De la segunda vez que le es pedido un objeto en adelante, puede responder con su propia copia, desde una distancia menor, en un tiempo menor. Los servidores subrogantes se distribuyen globalmente, cerca de los grandes focos de clientes de Internet, formando una red que se llama _Red de Entrega de Contenidos_ (o _Content Delivery Network_ en inglés, o _CDN_) [5].
+OLX utiliza fuertemente esta técnica. Su página inicial, sus páginas de listados y sus páginas de anuncios, que reciben más del 90% del tráfico, son reutilizables y se generan una sola vez. Al frente de los servidores de aplicación, un conjunto de servidores de _caching_ atiende los pedidos de los usuarios y sólo los reenvía a aquellos cuando las respuestas no han sido aún generadas y copiadas.
 
-Para que el caching sea transparente, la key de caché debe ser la misma por la que el cliente pide los objetos: la url. Si en una misma url tenemos que dar respuestas distintas dependiendo del cliente y la decisión de cuál respuesta dar se toma en el origen, luego la respuesta no se puede cachear y la CDN no se puede usar. El producto puede funcionar correctamente, pero el tiempo de transferencia crecerá significativamente y la carga en el origen será intolerable.
+Un beneficio adicional asociado a esta técnica es la descarga de trabajo en los servidores de aplicación. La generación de una respuesta a partir de su materia prima (estructuras de datos y plantillas de presentación) es un trabajo más costoso que la mera lectura de un objeto binario almacenado localmente (que es usualmente O(1) en búsqueda y O(n) en transferencia). Por cada reutilización de una respuesta, la suma total de trabajo ha sido disminuida en proporción a esa diferencia.
 
-Una forma que probamos inicialmente fue usar poblaciones estáticas: en lugar de tirar un dado a cada usuario y ponerlo en la población que le toque, mandamos todos los de tal país al tratamiento, y el resto al control. Fue un avance, comparado con no hacer nada, pero rápidamente fue insuficiente. Las diferencias culturales le quitaban a la vez confianza y utilidad a los resultados.
+### La latencia de la transferencia
+
+El servidor de aplicación suele estar ubicado en un solo punto geográfico de la Internet. No es infrecuente tener servidores en más de un punto pero, si la aplicación tiene estado interno, sincronizar las transacciones a través de enlaces no locales es costoso (técnica y económicamente) y sólo se hace por cuestiones legales o de disponibilidad: nunca de performance. Una forma de disminuir la latencia de la transferencia es disminuir la distancia de red entre el servidor y el cliente pero, cuando los clientes están geográficamente dispersos (siempre en términos de red), es imposible encontrar un punto que sea cercano a todos.
+
+Lo que sí se puede mover en estos casos es los servidores de _caching_. En lugar de ubicarlos inmediatamente al frente de los servidores de aplicación, se los ubica en medio de los focos de clientes, en los centros neurálgicos de la Internet. La distancia al servidor de aplicación y el tiempo de respuesta de pedidos nuevos no cambian, pero la distancia al servidor de _caching_ y el tiempo de respuesta para pedidos cuya respuesta está en caché disminuye notablemente.
+
+	[servidor de aplicación] <-> [1] <-> [2] <--> [caché] <-> [3] <-> [cliente]
+	                                          |
+	                                          +-> [caché] <-> [3] <-> [cliente]
+
+Una mejora adicional a esta técnica consiste en tener los servidores de _caching_ comunicados entre sí a una corta distancia de red, y que cada uno, cuando no tiene una respuesta propia a un pedido, intente conseguirla primero en su par más cercano antes de recurrir al origen. La probabilidad de encontrar el objeto aumenta (ya que se divide la probabilidad negativa por la cardinalidad del conjunto de cachés) y el costo cuando no se encuentra no pasa de una operación O(1). Esta red distribuida de servidores de _caching_ se llama _Red de Entrega de Contenidos (_Content Delivery Network_ o _CDN_ en inglés).
+
+**OLX usa una**
+
+### El A/B testing con una CDN
+
+**Para que el caching sea transparente, la key de caché debe ser la misma por la que el cliente pide los objetos: la url. Si en una misma url tenemos que dar respuestas distintas dependiendo del cliente y la decisión de cuál respuesta dar se toma en el origen, luego la respuesta no se puede cachear y la CDN no se puede usar. El producto puede funcionar correctamente, pero el tiempo de transferencia crecerá significativamente y la carga en el origen será intolerable.**
+
+**Una forma que probamos inicialmente fue usar poblaciones estáticas: en lugar de tirar un dado a cada usuario y ponerlo en la población que le toque, mandamos todos los de tal país al tratamiento, y el resto al control. Fue un avance, comparado con no hacer nada, pero rápidamente fue insuficiente. Las diferencias culturales le quitaban a la vez confianza y utilidad a los resultados.**
 
 ## A/B testing en el cliente
 
@@ -68,7 +96,7 @@ Una forma que probamos inicialmente fue usar poblaciones estáticas: en lugar de
 		* la implementación en js NO es más barata
 	* el test queda expuesto al usuario
 
-La otra alternativa es tomar la decisión del otro lado de la CDN: en el cliente. Un ejemplo de esto es optimizely, que es lo segundo que probamos. Se incluye un script en cada página que, en función del dado, varía el contenido de la página. El código fuente, lo que el cliente recibe, es constante y, por lo tanto, cacheable en todo el camino. Hay, sin embargo, otras limitaciones.
+**La otra alternativa es tomar la decisión del otro lado de la CDN: en el cliente. Un ejemplo de esto es optimizely, que es lo segundo que probamos. Se incluye un script en cada página que, en función del dado, varía el contenido de la página. El código fuente, lo que el cliente recibe, es constante y, por lo tanto, cacheable en todo el camino. Hay, sin embargo, otras limitaciones.**
 
 ### Flickering
 
@@ -84,4 +112,4 @@ La otra alternativa es tomar la decisión del otro lado de la CDN: en el cliente
 
 ## Entonces...
 
-Queremos A/B testing, que se hace en el servidor o en el cliente, y no nos gusta ni el servidor ni el cliente. Qué hacemos?
+**Queremos A/B testing, que se hace en el servidor o en el cliente, y no nos gusta ni el servidor ni el cliente. Qué hacemos?**
