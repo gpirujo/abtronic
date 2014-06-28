@@ -71,9 +71,18 @@ Lo que sí se puede mover en estos casos es los servidores de _caching_. En luga
 	                                          |
 	                                          +-> [caché] <-> [3] <-> [cliente]
 
-Una mejora adicional a esta técnica consiste en tener los servidores de _caching_ comunicados entre sí a una corta distancia de red, y que cada uno, cuando no tiene una respuesta propia a un pedido, intente conseguirla primero en su par más cercano antes de recurrir al origen. La probabilidad de encontrar el objeto aumenta (ya que se divide la probabilidad negativa por la cardinalidad del conjunto de cachés) y el costo cuando no se encuentra no pasa de una operación O(1). Esta red distribuida de servidores de _caching_ se llama _Red de Entrega de Contenidos (_Content Delivery Network_ o _CDN_ en inglés).
+Una mejora adicional a esta técnica consiste en tener los servidores de _caching_ comunicados entre sí a una corta distancia de red, y que cada uno, cuando no tiene una respuesta propia a un pedido, intente conseguirla primero en su par más cercano antes de recurrir al origen. El costo es mayor cuando no se encuentra el objeto, pero el aumento es sólo una operación O(1) y la probabilidad de que esto ocurra disminuye a su cuadrado. Esta red distribuida de servidores de _caching_ se llama _Red de Entrega de Contenidos_ (_Content Delivery Network_ o _CDN_ en inglés).
 
-**OLX usa una**
+Rara vez una red de entrega de contenidos necesita para funcionar más información que la ubicación del servidor de aplicación. Si bien trabaja en la capa de aplicación de la pila de red, en una subdivisión de esa capa será la subcapa inferior, igual que un servidor HTTP, y para la aplicación web no será más que infraestructura. Por eso, es frecuente que las redes de entrega de contenidos sean provistas por terceros, pues tienen en sí mismas una gran complejidad que escapa habitualmente el alcance de los proveedores de servicios de aplicación. Tal es el caso de OLX, que utiliza el servicio de red de entrega de contenidos de Akamai (http://www.akamai.com/).
+
+	Pilas de red del origen, la CDN y el cliente
+
+	ORIGEN             CDN                      CLIENTE
+	aplicación web                              navegador web
+	servidor http      caché http               cliente http
+	servidor tcp       cliente/servidor tcp     cliente tcp
+	host ip            host ip                  host ip
+	etc                etc                      etc
 
 ### El A/B testing con una CDN
 
@@ -83,32 +92,30 @@ Una mejora adicional a esta técnica consiste en tener los servidores de _cachin
 
 ## A/B testing en el cliente
 
-	* el flickering es ineludible
-		* hay rendering antes de que el dom esté listo
-			* los scripts detienen la construcción del dom sin inhibir el rendering
-		* un polling al dom incompleto
-			* falla cuando se hace una vez y hay más elementos
-			* falla cuando se reitera y no es idempotente
-			* una marca de los elementos contamina el dom
-			* incrementa la carga y la demora
-	* la implementación en js no es la definitiva
-		* cuando termina el test hay que reimplementar en server side
-		* la implementación en js NO es más barata
-	* el test queda expuesto al usuario
-
 **La otra alternativa es tomar la decisión del otro lado de la CDN: en el cliente. Un ejemplo de esto es optimizely, que es lo segundo que probamos. Se incluye un script en cada página que, en función del dado, varía el contenido de la página. El código fuente, lo que el cliente recibe, es constante y, por lo tanto, cacheable en todo el camino. Hay, sin embargo, otras limitaciones.**
 
 ### Flickering
 
-	Los navegadores web usualmente dividen la tarea de presentación de una página entre varios hilos de ejecución, entre los cuales se encuentran, por separado, uno que parsea el documento HTML recibido del servidor y construye un modelo de objetos del documento (_document object model_, o DOM), y otro que lee el DOM y dibuja en la pantalla (_rendering_) [7]. No hay primitivas de sincronización con esos hilos en espacio de usuario.
+* hay rendering antes de que el dom esté listo
+	* los scripts detienen la construcción del dom sin inhibir el rendering
+* un polling al dom incompleto
+	* falla cuando se hace una vez y hay más elementos
+	* falla cuando se reitera y no es idempotente
+	* una marca de los elementos contamina el dom
+	* incrementa la carga y la demora
 
-	Una herramienta de A/B testing que genere las variaciones en el cliente deberá necesariamente esperar a que los elementos a variar estén accesibles en el DOM, y modificarlos antes de que el hilo de _rendering_ los dibuje. Dado que no hay una interfaz de sincronización, la espera debe ser activa y periódica, dejando una condición de carrera que no garantiza que el contenido original no sea visto por el usuario.
+**Los navegadores web usualmente dividen la tarea de presentación de una página entre varios hilos de ejecución, entre los cuales se encuentran, por separado, uno que parsea el documento HTML recibido del servidor y construye un modelo de objetos del documento (_document object model_, o DOM), y otro que lee el DOM y dibuja en la pantalla (_rendering_) [7]. No hay primitivas de sincronización con esos hilos en espacio de usuario.**
+
+**Una herramienta de A/B testing que genere las variaciones en el cliente deberá necesariamente esperar a que los elementos a variar estén accesibles en el DOM, y modificarlos antes de que el hilo de _rendering_ los dibuje. Dado que no hay una interfaz de sincronización, la espera debe ser activa y periódica, dejando una condición de carrera que no garantiza que el contenido original no sea visto por el usuario.**
 
 ### Doble implementación
 
+* cuando termina el test hay que reimplementar en server side
+* la implementación en js NO es más barata
+
 ### Exposición del test al usuario
 
-	Aunque con menor criticidad, que la información completa del experimento quede expuesta al usuario sin una razón de negocio también es inconveniente.
+**Aunque con menor criticidad, que la información completa del experimento quede expuesta al usuario sin una razón de negocio también es inconveniente.**
 
 ## Entonces...
 

@@ -32,4 +32,3 @@
 
 
 Sin embargo, hay redes que tienen la capacidad de interpretar órdenes embebidas en las respuestas del servidor de aplicación, desde simples declaraciones como la inclusión de un subdocumento asociado, hasta instrucciones con complejidad de Turing, como la selección y la iteración [6].
-
