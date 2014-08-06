@@ -32,7 +32,7 @@ class ABTronic {
                         });
                         $esi->otherwise(function($esi) use($COOKIE, $DICE) {
                             $esi->assign('die', '\'\'');
-                            $esi->for_each(sprintf('[1..%d]', $DICE * 2), function($esi) {
+                            $esi->for_each(sprintf('[1..%d]', $DICE * 2), 'item', function($esi) {
                                 $esi->assign('die', '$(die) + $str($rand(10))');
                             });
                             $esi->set_cookie($COOKIE, '$(die)');

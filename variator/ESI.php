@@ -40,9 +40,10 @@ class ESI {
         $this->tag('otherwise', array(), $f, array_slice(func_get_args(), 1));
     }
 
-    public function for_each($collection, $f) {
+    public function for_each($collection, $item, $f) {
         $this->tag('foreach', array(
-            'collection' => $collection
+            'collection' => $collection,
+            'item' => $item,
         ), $f, array_slice(func_get_args(), 2));
     }
 
