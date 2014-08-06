@@ -7,69 +7,76 @@ class ABTronic {
     const CONTROL = 'CONTROL';
 
     private $esi;
-    private $experiments;
-    private $dieThrown = false;
-    private $activeExperiments = array();
+    public $experiments;
+    public $activeExperiments = array();
 
     public function __construct($esi, $experiments) {
         $this->esi = $esi;
         $this->experiments = $experiments;
     }
 
+    public function run($body) {
+        $COOKIE = static::COOKIE;
+        $DICE = static::DICE;
+        $that = $this;
+        $this->esi->in(function($esi) use($body, $that, $COOKIE, $DICE) {
+            $esi->for_each('[0,1]', 'run_user_code', function($esi) use($body, $that, $COOKIE, $DICE) {
+                $esi->choose(function($esi) use($body, $that, $COOKIE, $DICE) {
+                    $esi->when('$(run_user_code)', function($esi) use($body, $that) {
+                        $esi->out($body, $that);
+                    });
+                    $esi->otherwise(function($esi) use($that, $COOKIE, $DICE) {
+                        if (count($that->activeExperiments)) {
+
+                            $esi->choose(function($esi) use($COOKIE, $DICE) {
+                                $esi->when(sprintf('$(HTTP_COOKIE{\'%s\'}) matches \'\'\'^[0-9]{%d}$\'\'\'', $COOKIE, $DICE * 2), function($esi) {
+                                    $esi->assign('die', '$(MATCHES{0})');
+                                });
+                                $esi->otherwise(function($esi) use($COOKIE, $DICE) {
+                                    $esi->assign('die', '\'\'');
+                                    $esi->for_each(sprintf('[1..%d]', $DICE * 2), 'item', function($esi) {
+                                        $esi->assign('die', '$(die) + $str($rand(10))');
+                                    });
+                                    $esi->set_cookie($COOKIE, '$(die)');
+                                });
+                            });
+
+                            foreach ($that->activeExperiments as $experiment) {
+
+                                $opts = $that->experiments[$experiment]['options'];
+                                $crc = crc32($experiment);
+
+                                $esi->assign('x', sprintf('($int($substr($(die), %d, 2)) + %d) %% 100', ($crc % $DICE) * 2, $crc % 100));
+                                $esi->choose(function($esi) use($opts, $CONTROL) {
+
+                                    ksort($opts);
+                                    foreach ($opts as $opt_name => $opt_val) {
+                                        $cummulative += $opt_val;
+                                        $esi->when(sprintf('$(x)<=%d', $cummulative), function($esi) use($opt_name) {
+                                            $esi->assign('y', sprintf('\'%s\'', base64_encode(json_encode($opt_name))));
+                                        });
+                                    }
+
+                                    $esi->otherwise(function($esi) use($CONTROL) {
+                                        $esi->assign('y', sprintf('\'%s\'', base64_encode(json_encode($CONTROL))));
+                                    });
+
+                                });
+                                $esi->assign(sprintf('experiments{\'%s\'}', base64_encode($experiment)), '$(y)');
+
+                            }
+
+                        }
+                    });
+                });
+            });
+        });
+    }
+
     public function variate($experiment, $options, $then, $else = null) {
 
         if (!in_array($experiment, $this->activeExperiments)) {
-
-            $COOKIE = static::COOKIE;
-            $DICE = static::DICE;
-
-            if (!$this->dieThrown) {
-
-                $this->esi->in(function($esi) use($COOKIE, $DICE) {
-                    $esi->choose(function($esi) use($COOKIE, $DICE) {
-                        $esi->when(sprintf('$(HTTP_COOKIE{\'%s\'}) matches \'\'\'^[0-9]{%d}$\'\'\'', $COOKIE, $DICE * 2), function($esi) {
-                            $esi->assign('die', '$(MATCHES{0})');
-                        });
-                        $esi->otherwise(function($esi) use($COOKIE, $DICE) {
-                            $esi->assign('die', '\'\'');
-                            $esi->for_each(sprintf('[1..%d]', $DICE * 2), 'item', function($esi) {
-                                $esi->assign('die', '$(die) + $str($rand(10))');
-                            });
-                            $esi->set_cookie($COOKIE, '$(die)');
-                        });
-                    });
-                });
-
-                $this->dieThrown = true;
-
-            }
-
-            $this->esi->in(function($esi, $opts) use($experiment, $COOKIE, $DICE) {
-
-                $crc = crc32($experiment);
-
-                $esi->assign('x', sprintf('($int($substr($(die), %d, 2)) + %d) %% 100', ($crc % $DICE) * 2, $crc % 100));
-                $esi->choose(function($esi) use($opts, $CONTROL) {
-
-                    ksort($opts);
-                    foreach ($opts as $opt_name => $opt_val) {
-                        $cummulative += $opt_val;
-                        $esi->when(sprintf('$(x)<=%d', $cummulative), function($esi) use($opt_name) {
-                            $esi->assign('y', sprintf('\'%s\'', base64_encode(json_encode($opt_name))));
-                        });
-                    }
-
-                    $esi->otherwise(function($esi) use($CONTROL) {
-                        $esi->assign('y', sprintf('\'%s\'', base64_encode(json_encode($CONTROL))));
-                    });
-
-                });
-                $esi->assign(sprintf('experiments{\'%s\'}', base64_encode($experiment)), '$(y)');
-
-            }, $this->experiments[$experiment]['options']);
-
             $this->activeExperiments[] = $experiment;
-
         }
 
         if (!is_array($options)) {

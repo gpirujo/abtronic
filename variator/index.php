@@ -22,6 +22,7 @@ $esi->start(function($esi) {
         ),
     );
     $ab = new ABTronic($esi, $experiments);
+    $ab->run(function($esi, $ab) use($experiments) {
 
     ?>
     <html>
@@ -51,5 +52,7 @@ $esi->start(function($esi) {
         </body>
     </html>
     <?php
+
+    });
 
 });
