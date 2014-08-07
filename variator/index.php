@@ -21,8 +21,7 @@ $esi->start(function($esi) {
             ),
         ),
     );
-    $ab = new ABTronic($esi, $experiments);
-    $ab->run(function($esi, $ab) use($experiments) {
+    ABTronic::run($esi, $experiments, function($esi, $ab) use($experiments) {
 
     ?>
     <html>

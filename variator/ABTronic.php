@@ -15,12 +15,12 @@ class ABTronic {
         $this->experiments = $experiments;
     }
 
-    public function run($body) {
+    public static function run($esi, $experiments, $body) {
         $COOKIE = static::COOKIE;
         $DICE = static::DICE;
         $CONTROL = static::CONTROL;
-        $that = $this;
-        $this->esi->in(function($esi) use($body, $that, $COOKIE, $DICE, $CONTROL) {
+        $that = new static($esi, $experiments);
+        $esi->in(function($esi) use($body, $that, $COOKIE, $DICE, $CONTROL) {
             $esi->for_each('[0,1]', 'run_user_code', function($esi) use($body, $that, $COOKIE, $DICE, $CONTROL) {
                 $esi->choose(function($esi) use($body, $that, $COOKIE, $DICE, $CONTROL) {
                     $esi->when('$(run_user_code)', function($esi) use($body, $that) {
