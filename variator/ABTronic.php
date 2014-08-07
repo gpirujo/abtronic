@@ -10,7 +10,7 @@ class ABTronic {
         $esi->in(function($esi) use($body, $experiments) {
             $esi->for_each('[0,1]', 'run_user_code', function($esi) use($body, $experiments) {
                 $esi->choose(function($esi) use($body, $experiments) {
-                    $that = new static($esi);
+                    $that = new ABTronic($esi);
                     $esi->when('$(run_user_code)', function($esi) use($body, $that) {
                         $esi->out($body, $that);
                     });
@@ -100,14 +100,7 @@ class ABTronic {
     public function track() {
         ?><script><?php
 
-            ?>(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){<?php
-            ?>(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),<?php
-            ?>m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)<?php
-            ?>})(window,document,'script','//www.google-analytics.com/analytics.js','ga');<?php
-
-            ?>ga('create','UA-51391553-1','abtronic.gpirujo.com');<?php
-            ?>ga('send','pageview', {<?php
-
+            ?>var dimensions={<?php
             $this->esi->in(function($esi) {
                 $esi->assign('comma', "''");
                 $esi->for_each('$(experiments)', 'experiment', function($esi) {
@@ -115,8 +108,15 @@ class ABTronic {
                     $esi->assign('comma', "','");
                 });
             });
+            ?>};<?php
 
-            ?>});<?php
+            ?>(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){<?php
+            ?>(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),<?php
+            ?>m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)<?php
+            ?>})(window,document,'script','//www.google-analytics.com/analytics.js','ga');<?php
+
+            ?>ga('create','UA-51391553-1','abtronic.gpirujo.com');<?php
+            ?>ga('send','pageview', dimensions);<?php
 
         ?></script><?php
     }
