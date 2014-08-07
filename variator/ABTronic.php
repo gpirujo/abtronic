@@ -7,10 +7,10 @@ class ABTronic {
     const CONTROL = 'CONTROL';
 
     public static function run($esi, $experiments, $body) {
-        $that = new static($esi);
-        $esi->in(function($esi) use($body, $that, $experiments) {
-            $esi->for_each('[0,1]', 'run_user_code', function($esi) use($body, $that, $experiments) {
-                $esi->choose(function($esi) use($body, $that, $experiments) {
+        $esi->in(function($esi) use($body, $experiments) {
+            $esi->for_each('[0,1]', 'run_user_code', function($esi) use($body, $experiments) {
+                $esi->choose(function($esi) use($body, $experiments) {
+                    $that = new static($esi);
                     $esi->when('$(run_user_code)', function($esi) use($body, $that) {
                         $esi->out($body, $that);
                     });
