@@ -6,11 +6,11 @@ class ABTronic {
     const COOKIE = 'die';
     const CONTROL = 'CONTROL';
 
-    public static function run($esi, $experiments, $body) {
-        $esi->in(function($esi) use($body, $experiments) {
-            $esi->for_each('[0,1]', 'run_user_code', function($esi) use($body, $experiments) {
-                $esi->choose(function($esi) use($body, $experiments) {
-                    $that = new ABTronic($esi);
+    public static function run($esi, $experiments, $tracker, $body) {
+        $esi->in(function($esi) use($tracker, $body, $experiments) {
+            $esi->for_each('[0,1]', 'run_user_code', function($esi) use($tracker, $body, $experiments) {
+                $esi->choose(function($esi) use($tracker, $body, $experiments) {
+                    $that = new ABTronic($esi, $tracker);
                     $esi->when('$(run_user_code)', function($esi) use($body, $that) {
                         $esi->out($body, $that);
                     });
@@ -52,6 +52,7 @@ class ABTronic {
 
                                 });
                                 $esi->assign(sprintf('experiments{\'%s\'}', base64_encode($experiment)), '$(y)');
+                                $esi->assign(sprintf('tracking{\'%s\'}', base64_encode($experiment)), base64_encode(json_encode($experiments[$experiment]['tracking'])));
 
                             }
 
@@ -63,10 +64,12 @@ class ABTronic {
     }
 
     private $esi;
+    private $tracker;
     public $activeExperiments = array();
 
-    public function __construct($esi) {
+    public function __construct($esi, $tracker) {
         $this->esi = $esi;
+        $this->tracker = $tracker;
     }
 
     public function variate($experiment, $options, $then, $else = null) {
@@ -96,36 +99,44 @@ class ABTronic {
 
     }
 
-    public function getExperiments() {
-        ?>{<?php
-        $this->esi->in(function($esi) {
-            $esi->assign('comma', "''");
-            $esi->for_each('$(experiments)', 'experiment', function($esi) {
-                $esi->vars('$(comma)\'$(experiment{0})\':\'$base64_decode($(experiment{1}))\'');
-                $esi->assign('comma', "','");
+    public function track() {
+        $this->tracker->track(function($esi) {
+            ?>[<?php
+            $esi->in(function($esi) {
+                $esi->assign('comma', "''");
+                $esi->for_each('$(experiments)', 'experiment', function($esi) {
+                    $esi->vars('$(comma)[\'$base64_decode($(experiment{0}))\',\'$base64_decode($(experiment{1}))\',$base64_decode($(tracking{$(experiment{0})}))]');
+                    $esi->assign('comma', "','");
+                });
             });
-        });
-        ?>}<?php
+            ?>]<?php
+        }, $this->esi);
     }
 
 }
 
 class GATracker {
 
-    public function track($dimensions, $ab) {
+    private $id;
+    private $domain;
+
+    public function __construct($id, $domain) {
+        $this->id = $id;
+        $this->domain = $domain;
+    }
+
+    public function track($f) {
         ?><script><?php
 
-            ?>var dimensions=<?= json_encode($dimensions) ?>,variations=<?php
-            $ab->getExperiments();
-            ?>,send={};for(var i in variations)send['dimension'+dimensions[i]]=variations[i];<?php
+            ?>var d=<?php call_user_func_array($f, array_slice(func_get_args(), 1)); ?>;<?php
 
             ?>(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){<?php
             ?>(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),<?php
             ?>m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)<?php
             ?>})(window,document,'script','//www.google-analytics.com/analytics.js','ga');<?php
 
-            ?>ga('create','UA-51391553-1','abtronic.gpirujo.com');<?php
-            ?>ga('send','pageview',send);<?php
+            ?>ga('create',<?= json_encode($this->id) ?>,<?= json_encode($this->domain) ?>);<?php
+            ?>ga('send','pageview',{});<?php
 
         ?></script><?php
     }

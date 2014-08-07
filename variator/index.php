@@ -7,21 +7,21 @@ $esi->start(function($esi) {
 
     $experiments = array(
         'HomePageMap' => array(
-            'dimension' => 1,
             'options' => array(
                 'A, tu hermana' => 20,
                 'B, tu vieja' => 20,
             ),
+            'tracking' => 'dimension1',
         ),
         'PostingButton' => array(
-            'dimension' => 2,
             'options' => array(
                 'A' => 40,
                 'B' => 40,
             ),
+            'tracking' => 'dimension2',
         ),
     );
-    ABTronic::run($esi, $experiments, function($esi, $ab) use($experiments) {
+    ABTronic::run($esi, $experiments, new GATracker('UA-51391553-1', 'abtronic.gpirujo.com'), function($esi, $ab) use($experiments) {
 
     ?>
     <html>
@@ -46,14 +46,7 @@ $esi->start(function($esi) {
                 <?php }); ?>
             <?php } ?>
 
-            <?php
-                $dimensions = array();
-                foreach ($experiments as $name => $def) {
-                    $dimensions[base64_encode($name)] = $def['dimension'];
-                }
-                $ga = new GATracker();
-                $ga->track($dimensions, $ab);
-            ?>
+            <?php $ab->track(); ?>
 
         </body>
     </html>
