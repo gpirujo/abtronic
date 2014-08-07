@@ -100,21 +100,23 @@ class ABTronic {
 
     }
 
+    public function getExperiments() {
+        ?>{<?php
+        $this->esi->in(function($esi) {
+            $esi->assign('comma', "''");
+            $esi->for_each('$(experiments)', 'experiment', function($esi) {
+                $esi->vars('$(comma)\'$(experiment{0})\':\'$base64_decode($(experiment{1}))\'');
+                $esi->assign('comma', "','");
+            });
+        });
+        ?>}<?php
+    }
+
     public function track() {
         ?><script><?php
 
             ?>var dimensions=<?= json_encode($this->dimensions) ?>,variations=<?php
-            
-            ?>{<?php
-            $this->esi->in(function($esi) {
-                $esi->assign('comma', "''");
-                $esi->for_each('$(experiments)', 'experiment', function($esi) {
-                    $esi->vars('$(comma)\'$(experiment{0})\':\'$base64_decode($(experiment{1}))\'');
-                    $esi->assign('comma', "','");
-                });
-            });
-            ?>}<?php
-
+            $this->getExperiments();
             ?>,send={};for(var i in variations)send['dimension'+dimensions[i]]=variations[i];<?php
 
             ?>(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){<?php
