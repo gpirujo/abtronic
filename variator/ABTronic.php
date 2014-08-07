@@ -6,13 +6,6 @@ class ABTronic {
     const COOKIE = 'die';
     const CONTROL = 'CONTROL';
 
-    private $esi;
-    public $activeExperiments = array();
-
-    public function __construct($esi) {
-        $this->esi = $esi;
-    }
-
     public static function run($esi, $experiments, $body) {
         $COOKIE = static::COOKIE;
         $DICE = static::DICE;
@@ -71,6 +64,13 @@ class ABTronic {
                 });
             });
         });
+    }
+
+    private $esi;
+    public $activeExperiments = array();
+
+    public function __construct($esi) {
+        $this->esi = $esi;
     }
 
     public function variate($experiment, $options, $then, $else = null) {
