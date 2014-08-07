@@ -18,14 +18,15 @@ class ABTronic {
     public function run($body) {
         $COOKIE = static::COOKIE;
         $DICE = static::DICE;
+        $CONTROL = static::CONTROL;
         $that = $this;
-        $this->esi->in(function($esi) use($body, $that, $COOKIE, $DICE) {
-            $esi->for_each('[0,1]', 'run_user_code', function($esi) use($body, $that, $COOKIE, $DICE) {
-                $esi->choose(function($esi) use($body, $that, $COOKIE, $DICE) {
+        $this->esi->in(function($esi) use($body, $that, $COOKIE, $DICE, $CONTROL) {
+            $esi->for_each('[0,1]', 'run_user_code', function($esi) use($body, $that, $COOKIE, $DICE, $CONTROL) {
+                $esi->choose(function($esi) use($body, $that, $COOKIE, $DICE, $CONTROL) {
                     $esi->when('$(run_user_code)', function($esi) use($body, $that) {
                         $esi->out($body, $that);
                     });
-                    $esi->otherwise(function($esi) use($that, $COOKIE, $DICE) {
+                    $esi->otherwise(function($esi) use($that, $COOKIE, $DICE, $CONTROL) {
                         if (count($that->activeExperiments)) {
 
                             $esi->choose(function($esi) use($COOKIE, $DICE) {
@@ -53,16 +54,17 @@ class ABTronic {
                                     foreach ($opts as $opt_name => $opt_val) {
                                         $cummulative += $opt_val;
                                         $esi->when(sprintf('$(x)<=%d', $cummulative), function($esi) use($opt_name) {
-                                            $esi->assign('y', sprintf('\'%s\'', base64_encode(json_encode($opt_name))));
+                                            $esi->assign('y', sprintf('\'%s\'', base64_encode($opt_name)));
                                         });
                                     }
 
                                     $esi->otherwise(function($esi) use($CONTROL) {
-                                        $esi->assign('y', sprintf('\'%s\'', base64_encode(json_encode($CONTROL))));
+                                        $esi->assign('y', sprintf('\'%s\'', base64_encode($CONTROL)));
                                     });
 
                                 });
                                 $esi->assign(sprintf('experiments{\'%s\'}', base64_encode($experiment)), '$(y)');
+                                $esi->assign(sprintf('dimensions{\'%s\'}', base64_encode($experiment)), sprintf('\'dimension%d\'', $that->experiments[$experiment]['dimension']));
 
                             }
 
@@ -85,7 +87,7 @@ class ABTronic {
 
         $clauses = array();
         foreach ($options as $option) {
-            $clauses[] = sprintf('$(experiments{\'%s\'})==\'%s\'', base64_encode($experiment), base64_encode(json_encode($option)));
+            $clauses[] = sprintf('$(experiments{\'%s\'})==\'%s\'', base64_encode($experiment), base64_encode($option));
         }
 
         $this->esi->in(function($esi) use($then, $else, $clauses) {
@@ -110,13 +112,13 @@ class ABTronic {
             ?>ga('create','UA-51391553-1','abtronic.gpirujo.com');<?php
             ?>ga('send','pageview', {<?php
 
-            foreach ($this->activeExperiments as $experiment) {
-                printf('%s%s:', @$comma, json_encode('dimension' . $this->experiments[$experiment]['dimension']));
-                $this->esi->in(function($esi) use($experiment) {
-                    $esi->vars(sprintf('$base64_decode($(experiments{\'%s\'}))', base64_encode($experiment)));
+            $this->esi->in(function($esi) {
+                $esi->assign('comma', "''");
+                $esi->for_each('$(experiments)', 'experiment', function($esi) {
+                    $esi->vars('$(comma)\'$(dimensions{$(experiment{0})})\':\'$base64_decode($(experiment{1}))\'');
+                    $esi->assign('comma', "','");
                 });
-                $comma = ',';
-            }
+            });
 
             ?>});<?php
 
