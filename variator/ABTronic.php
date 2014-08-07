@@ -7,29 +7,26 @@ class ABTronic {
     const CONTROL = 'CONTROL';
 
     public static function run($esi, $experiments, $body) {
-        $COOKIE = static::COOKIE;
-        $DICE = static::DICE;
-        $CONTROL = static::CONTROL;
         $that = new static($esi);
-        $esi->in(function($esi) use($body, $that, $COOKIE, $DICE, $CONTROL, $experiments) {
-            $esi->for_each('[0,1]', 'run_user_code', function($esi) use($body, $that, $COOKIE, $DICE, $CONTROL, $experiments) {
-                $esi->choose(function($esi) use($body, $that, $COOKIE, $DICE, $CONTROL, $experiments) {
+        $esi->in(function($esi) use($body, $that, $experiments) {
+            $esi->for_each('[0,1]', 'run_user_code', function($esi) use($body, $that, $experiments) {
+                $esi->choose(function($esi) use($body, $that, $experiments) {
                     $esi->when('$(run_user_code)', function($esi) use($body, $that) {
                         $esi->out($body, $that);
                     });
-                    $esi->otherwise(function($esi) use($that, $COOKIE, $DICE, $CONTROL, $experiments) {
+                    $esi->otherwise(function($esi) use($that, $experiments) {
                         if (count($that->activeExperiments)) {
 
-                            $esi->choose(function($esi) use($COOKIE, $DICE) {
-                                $esi->when(sprintf('$(HTTP_COOKIE{\'%s\'}) matches \'\'\'^[0-9]{%d}$\'\'\'', $COOKIE, $DICE * 2), function($esi) {
+                            $esi->choose(function($esi) {
+                                $esi->when(sprintf('$(HTTP_COOKIE{\'%s\'}) matches \'\'\'^[0-9]{%d}$\'\'\'', ABTronic::COOKIE, ABTronic::DICE * 2), function($esi) {
                                     $esi->assign('die', '$(MATCHES{0})');
                                 });
-                                $esi->otherwise(function($esi) use($COOKIE, $DICE) {
+                                $esi->otherwise(function($esi) {
                                     $esi->assign('die', '\'\'');
-                                    $esi->for_each(sprintf('[1..%d]', $DICE * 2), 'item', function($esi) {
+                                    $esi->for_each(sprintf('[1..%d]', ABTronic::DICE * 2), 'item', function($esi) {
                                         $esi->assign('die', '$(die) + $str($rand(10))');
                                     });
-                                    $esi->set_cookie($COOKIE, '$(die)');
+                                    $esi->set_cookie(ABTronic::COOKIE, '$(die)');
                                 });
                             });
 
@@ -38,8 +35,8 @@ class ABTronic {
                                 $opts = $experiments[$experiment]['options'];
                                 $crc = crc32($experiment);
 
-                                $esi->assign('x', sprintf('($int($substr($(die), %d, 2)) + %d) %% 100', ($crc % $DICE) * 2, $crc % 100));
-                                $esi->choose(function($esi) use($opts, $CONTROL) {
+                                $esi->assign('x', sprintf('($int($substr($(die), %d, 2)) + %d) %% 100', ($crc % ABTronic::DICE) * 2, $crc % 100));
+                                $esi->choose(function($esi) use($opts) {
 
                                     ksort($opts);
                                     foreach ($opts as $opt_name => $opt_val) {
@@ -49,8 +46,8 @@ class ABTronic {
                                         });
                                     }
 
-                                    $esi->otherwise(function($esi) use($CONTROL) {
-                                        $esi->assign('y', sprintf('\'%s\'', base64_encode($CONTROL)));
+                                    $esi->otherwise(function($esi) {
+                                        $esi->assign('y', sprintf('\'%s\'', base64_encode(ABTronic::CONTROL)));
                                     });
 
                                 });
