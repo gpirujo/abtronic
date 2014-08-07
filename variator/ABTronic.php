@@ -85,11 +85,12 @@ class ABTronic {
             $clauses[] = sprintf('$(experiments{\'%s\'})==\'%s\'', base64_encode($experiment), base64_encode($option));
         }
 
-        $this->esi->in(function($esi) use($then, $else, $clauses) {
-            $esi->choose(function($esi) use($then, $else, $clauses) {
-                $esi->when(join('||', $clauses), $then);
+        $that = $this;
+        $this->esi->in(function($esi) use($then, $else, $clauses, $that) {
+            $esi->choose(function($esi) use($then, $else, $clauses, $that) {
+                $esi->when(join('||', $clauses), $then, $that);
                 if ($else) {
-                    $esi->otherwise($else);
+                    $esi->otherwise($else, $that);
                 }
             });
         });
