@@ -7,26 +7,24 @@ class ABTronic {
     const CONTROL = 'CONTROL';
 
     private $esi;
-    public $experiments;
     public $activeExperiments = array();
 
-    public function __construct($esi, $experiments) {
+    public function __construct($esi) {
         $this->esi = $esi;
-        $this->experiments = $experiments;
     }
 
     public static function run($esi, $experiments, $body) {
         $COOKIE = static::COOKIE;
         $DICE = static::DICE;
         $CONTROL = static::CONTROL;
-        $that = new static($esi, $experiments);
-        $esi->in(function($esi) use($body, $that, $COOKIE, $DICE, $CONTROL) {
-            $esi->for_each('[0,1]', 'run_user_code', function($esi) use($body, $that, $COOKIE, $DICE, $CONTROL) {
-                $esi->choose(function($esi) use($body, $that, $COOKIE, $DICE, $CONTROL) {
+        $that = new static($esi);
+        $esi->in(function($esi) use($body, $that, $COOKIE, $DICE, $CONTROL, $experiments) {
+            $esi->for_each('[0,1]', 'run_user_code', function($esi) use($body, $that, $COOKIE, $DICE, $CONTROL, $experiments) {
+                $esi->choose(function($esi) use($body, $that, $COOKIE, $DICE, $CONTROL, $experiments) {
                     $esi->when('$(run_user_code)', function($esi) use($body, $that) {
                         $esi->out($body, $that);
                     });
-                    $esi->otherwise(function($esi) use($that, $COOKIE, $DICE, $CONTROL) {
+                    $esi->otherwise(function($esi) use($that, $COOKIE, $DICE, $CONTROL, $experiments) {
                         if (count($that->activeExperiments)) {
 
                             $esi->choose(function($esi) use($COOKIE, $DICE) {
@@ -44,7 +42,7 @@ class ABTronic {
 
                             foreach ($that->activeExperiments as $experiment) {
 
-                                $opts = $that->experiments[$experiment]['options'];
+                                $opts = $experiments[$experiment]['options'];
                                 $crc = crc32($experiment);
 
                                 $esi->assign('x', sprintf('($int($substr($(die), %d, 2)) + %d) %% 100', ($crc % $DICE) * 2, $crc % 100));
@@ -64,7 +62,7 @@ class ABTronic {
 
                                 });
                                 $esi->assign(sprintf('experiments{\'%s\'}', base64_encode($experiment)), '$(y)');
-                                $esi->assign(sprintf('dimensions{\'%s\'}', base64_encode($experiment)), sprintf('\'dimension%d\'', $that->experiments[$experiment]['dimension']));
+                                $esi->assign(sprintf('dimensions{\'%s\'}', base64_encode($experiment)), sprintf('\'dimension%d\'', $experiments[$experiment]['dimension']));
 
                             }
 
