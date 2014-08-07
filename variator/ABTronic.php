@@ -10,7 +10,9 @@ class ABTronic {
         $esi->in(function($esi) use($body, $experiments) {
             $esi->for_each('[0,1]', 'run_user_code', function($esi) use($body, $experiments) {
                 $esi->choose(function($esi) use($body, $experiments) {
-                    $that = new ABTronic($esi);
+                    $dimensions = array();
+                    foreach ($experiments as $name => $def) $dimensions[base64_encode($name)] = $def['dimension'];
+                    $that = new ABTronic($esi, $dimensions);
                     $esi->when('$(run_user_code)', function($esi) use($body, $that) {
                         $esi->out($body, $that);
                     });
@@ -52,7 +54,6 @@ class ABTronic {
 
                                 });
                                 $esi->assign(sprintf('experiments{\'%s\'}', base64_encode($experiment)), '$(y)');
-                                $esi->assign(sprintf('dimensions{\'%s\'}', base64_encode($experiment)), sprintf('\'dimension%d\'', $experiments[$experiment]['dimension']));
 
                             }
 
@@ -65,9 +66,11 @@ class ABTronic {
 
     private $esi;
     public $activeExperiments = array();
+    private $dimensions;
 
-    public function __construct($esi) {
+    public function __construct($esi, $dimensions) {
         $this->esi = $esi;
+        $this->dimensions = $dimensions;
     }
 
     public function variate($experiment, $options, $then, $else = null) {
@@ -100,15 +103,19 @@ class ABTronic {
     public function track() {
         ?><script><?php
 
-            ?>var dimensions={<?php
+            ?>var dimensions=<?= json_encode($this->dimensions) ?>,variations=<?php
+            
+            ?>{<?php
             $this->esi->in(function($esi) {
                 $esi->assign('comma', "''");
                 $esi->for_each('$(experiments)', 'experiment', function($esi) {
-                    $esi->vars('$(comma)\'$(dimensions{$(experiment{0})})\':\'$base64_decode($(experiment{1}))\'');
+                    $esi->vars('$(comma)\'$(experiment{0})\':\'$base64_decode($(experiment{1}))\'');
                     $esi->assign('comma', "','");
                 });
             });
-            ?>};<?php
+            ?>}<?php
+
+            ?>,send={};for(var i in variations)send['dimension'+dimensions[i]]=variations[i];<?php
 
             ?>(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){<?php
             ?>(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),<?php
@@ -116,7 +123,7 @@ class ABTronic {
             ?>})(window,document,'script','//www.google-analytics.com/analytics.js','ga');<?php
 
             ?>ga('create','UA-51391553-1','abtronic.gpirujo.com');<?php
-            ?>ga('send','pageview', dimensions);<?php
+            ?>ga('send','pageview',send);<?php
 
         ?></script><?php
     }
