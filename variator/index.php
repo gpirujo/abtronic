@@ -46,7 +46,14 @@ $esi->start(function($esi) {
                 <?php }); ?>
             <?php } ?>
 
-            <?php $ab->track(); ?>
+            <?php
+                $dimensions = array();
+                foreach ($experiments as $name => $def) {
+                    $dimensions[base64_encode($name)] = $def['dimension'];
+                }
+                $ga = new GATracker();
+                $ga->track($dimensions, $ab);
+            ?>
 
         </body>
     </html>

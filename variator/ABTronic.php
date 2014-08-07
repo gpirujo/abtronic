@@ -10,9 +10,7 @@ class ABTronic {
         $esi->in(function($esi) use($body, $experiments) {
             $esi->for_each('[0,1]', 'run_user_code', function($esi) use($body, $experiments) {
                 $esi->choose(function($esi) use($body, $experiments) {
-                    $dimensions = array();
-                    foreach ($experiments as $name => $def) $dimensions[base64_encode($name)] = $def['dimension'];
-                    $that = new ABTronic($esi, $dimensions);
+                    $that = new ABTronic($esi);
                     $esi->when('$(run_user_code)', function($esi) use($body, $that) {
                         $esi->out($body, $that);
                     });
@@ -66,11 +64,9 @@ class ABTronic {
 
     private $esi;
     public $activeExperiments = array();
-    private $dimensions;
 
-    public function __construct($esi, $dimensions) {
+    public function __construct($esi) {
         $this->esi = $esi;
-        $this->dimensions = $dimensions;
     }
 
     public function variate($experiment, $options, $then, $else = null) {
@@ -112,11 +108,15 @@ class ABTronic {
         ?>}<?php
     }
 
-    public function track() {
+}
+
+class GATracker {
+
+    public function track($dimensions, $ab) {
         ?><script><?php
 
-            ?>var dimensions=<?= json_encode($this->dimensions) ?>,variations=<?php
-            $this->getExperiments();
+            ?>var dimensions=<?= json_encode($dimensions) ?>,variations=<?php
+            $ab->getExperiments();
             ?>,send={};for(var i in variations)send['dimension'+dimensions[i]]=variations[i];<?php
 
             ?>(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){<?php
