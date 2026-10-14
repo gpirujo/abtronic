@@ -1,5 +1,0 @@
-# Introducción
-
-	La propuesta de trabajo consiste en el desarrollo de una plataforma de A/B testing cuya herramienta de variación de contenido se ejecute en la red de entrega de contenidos. El servidor de aplicación podrá entregar el conjunto completo de variaciones a la red de entrega y ésta distribuirá las variaciones a los usuarios según sus asignaciones aleatorias particulares. Así, la mayoría de las solicitudes podrán ser satisfechas en la red, conservando la delegación de la carga, y cada usuario recibirá una sola variación sin saber que está formando parte de un experimento.
-
-	La plataforma se completa con un componente de recolección de datos, que muestree las asignaciones aleatorias de variaciones a usuarios y los valores de las variables de negocio, y un componente de reporte, que sumarice los resultados orientando la presentación a la asistencia en toma de decisiones. Como valor agregado, se incluye la automatización de la distribución de las asignaciones, de manera que la correcta medición de correlaciones y resultados marginales no requiera del operador conocimientos especializados.
